@@ -1,4 +1,4 @@
-from sparksessionutils import
+from programs.sparksessionutils import spark
 
 
 airlineschema = StructType([StructField("airline_id", IntegerType()),
