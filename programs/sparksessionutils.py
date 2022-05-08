@@ -1,10 +1,15 @@
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import *
-from pyspark.sql.types import *
 
+class sparksessionutils:
 
-if __name__ == "__main__":
-    spark = SparkSession.builder.master("local[*]").config("spark.driver.bindAddress","localhost")\
-            .config("spark.ui.port","4050").getOrCreate()
-    # print(spark)
+    def readCsv(self,spark,path,schema=None, inferschema=True,header=True,sep=","):
+
+        if (inferschema is False) and (schema == None):
+            raise Exception("please provide Schema as True or else provide schema for given i/p file")
+
+        if schema == None:
+
+            readdf = spark.read.csv(path = path,inferSchema=inferschema,header=header,sep=sep)
+        else:
+            readdf = spark.read.csv(path= path,schema=schema,header=header,sep=sep)
+        return readdf
 
