@@ -9,7 +9,7 @@ from pyspark.sql.types import *
 if __name__ == "__main__":
     spark = SparkSession.builder\
         .master("local[*]")\
-        .config("spark.driver.memory","6g")\
+        .config("spark.driver.memory","8g")\
         .appName("airlinemgmt") \
         .getOrCreate()
 
@@ -60,6 +60,8 @@ if __name__ == "__main__":
     portdf.printSchema()
     print("--------airport-------------")
     portdf.show()
+
+
 
     plane = spark.read.csv(r"input/plane.csv", inferSchema=True, sep='', header=True)
     plane.printSchema()
@@ -129,7 +131,7 @@ if __name__ == "__main__":
 
     joidf = airpdf.join(airldf, airpdf.Country == airldf.Country, "inner") \
         .select(airpdf["Country"], "Airport_Name", "Airline_Name")
-    # joidf.show()
+    joidf.show(truncate=False)
 
 
     # joidf.write.csv(r"output/countairport",header=True)
@@ -145,15 +147,15 @@ if __name__ == "__main__":
     # # spark.sql("select * from airport").show()
     # # spark.sql("select * from airline").show()
     # print("----------sql---------------- \n")
-    sqldf = spark.sql("select ar.Country as Country,al.name as Airline_name,ar.Name as Airport_name from airline al "
-                      "join airport ar on (al.country = ar.Country)")
-
-    # sqldf.createOrReplaceTempView("sqldf")
+    # sqldf = spark.sql("select ar.Country as Country,al.name as Airline_name,ar.Name as Airport_name from airline al "
+    #                   "join airport ar on (al.country = ar.Country)")
+    #
+    # # sqldf.createOrReplaceTempView("sqldf")
     # query = f"""SELECT Country ,
     #         LISTAGG(Airline_name, '; ') WITHIN GROUP (ORDER BY Country) "Airlines"
     #         FROM sqldf GROUP BY department_id ORDER BY department_id;"""
     # spark.sql(query).show()
-
+    #
     # sqldf.printSchema()
     # print("\n")
 
@@ -184,8 +186,8 @@ if __name__ == "__main__":
     # filter.show()
     # filter.printSchema()
 
-    condition1 = [ filter[ 'airline_id' ]  == airdf['airline_id']  ]
-    condition2 = [ filter[ 'src_airport' ]  == portdf['Iata']  ]
+    condition1 = [filter[ 'airline_id' ]  == airdf['airline_id']  ]
+    condition2 = [filter[ 'src_airport' ]  == portdf['Iata']  ]
 
     Result = filter.join(airdf, on=condition1) \
         .select(
@@ -251,20 +253,39 @@ if __name__ == "__main__":
                 from airportdf ar join routedf rt on (ar.Iata = rt.src_airport)
                 group by ar.name,ar.airport_id,rt.src_airport,rt.dest_airport
                 order by ar.name) where r1 = 1"""
-    spark.sql(query1).show()
+    # spark.sql(query1).show()
 
     ##### 6) Get the airline details which is having direct flights. details like airline id,name,source airport
     # name,destination airport name
 
-    a = routes.filter(routes['stops'] == 0)
-    a.show()
+
+    df = routes.join(airdf,routes.airline_id == airdf.airline_id,'inner')\
+        .filter(routes['stops'] == 0) \
+        .filter(airdf['active'] == 'Y')\
+        .select(airdf.airline_id,airdf.name,routes.src_airport,routes.dest_airport)
+    df.show()
+    # df.printSchema()
+
+    c= routes.join(portdf,routes.src_airport == portdf.Iata)\
+        .select(routes.src_airport,portdf['name'].alias('source_airport'))
+    d= routes.join(portdf,routes.dest_airport == portdf.Iata)\
+        .select(routes.dest_airport,portdf['name'].alias('destination_airport'))
+
+    c.show()
+    d.show()
 
 
+
+    final = df.join(c,df.src_airport == c.src_airport)\
+            .join(d,df.dest_airport == d.dest_airport)\
+            .select(df.airline_id,df.name,c.source_airport,d.destination_airport)\
+            .orderBy(asc(df['airline_id']))
+
+    # final.show(n=50)
     # airdet = airdf.join(portdf, airdf.iata == portdf.Iata, 'inner') \
     #         .join(a,portdf.Iata == a.src_airport,"inner")\
-    #         .join(a,portdf.Iata == a.dest_airport,"inner")\
-    #         .select(airdf["airline_id"],airdf["name"],portdf["Name"].alias["source_airport"],portdf["Name"].alias[
-    #         "dest_airport"])
+    #         .select(airdf["airline_id"],airdf["name"],portdf["Name"])
     # airdet.show(truncate = False)
-    #
+
+
     # print(airdet.count())
