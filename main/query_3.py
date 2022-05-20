@@ -9,7 +9,7 @@ df2 = airportdf()
 df3 = planesdf()
 df4 = routesdf()
 
-
+spark = df1.sparks()
 airline = df1.airlines()
 airport = df2.airports()
 planes = df3.planes()
@@ -17,19 +17,12 @@ routes = df4.routes()
 
 ## 3) get the airlines details like name,id,which is has been taken takeoff more than 3 times from same airport
 takeoff = routes.join(airline, routes.airline_id == airline.airline_id, "inner")\
-    .join(airport,routes.src_airport == airport.Iata).groupBy(airline.airline_id, airline.name,routes.src_airport_id,routes.src_airport).count()
+    .join(airport,routes.src_airport == airport.Iata).\
+        groupBy(airline.airline_id, airline.name,routes.src_airport_id,routes.src_airport).count()
 res = takeoff.where(col("count") > 3).distinct()
 
 print(res.count())
 res.show()
-
-# -----sql-----
-#
-routes.createOrReplaceTempView("routedf")
-airline.createOrReplaceTempView("airlinedf")
-airport.createOrReplaceTempView("airportdf")
-# spark.sql("select r.airline_id,a.name,r.src_airport_id,r.")
-
 
 # --- 2nd method--------
 
@@ -52,3 +45,16 @@ Result = filter.join(airline, on=condition1) \
         airport.Name.alias('Airport_Name')).distinct()
 print(Result.count())
 Result.show()
+
+
+
+# -----sql-----
+#
+routes.createOrReplaceTempView("routedf")
+airline.createOrReplaceTempView("airlinedf")
+airport.createOrReplaceTempView("airportdf")
+df = spark.sql("select r.airline_id,a.name,r.src_airport,count(*) from"
+               "airlinedf a join routedf r on a.airline_id = r.airline_id "
+               "group by r.airline_id,a.name,r.src_airport having count(*) > 3")
+df.show()
+print(df.count())

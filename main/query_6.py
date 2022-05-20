@@ -8,13 +8,11 @@ from routesdf import *
 
 df1 = airlinedf()
 df2 = airportdf()
-df3 = planesdf()
-df4 = routesdf()
-
+df3 = routesdf()
+spark = df1.sparks()
 airline = df1.airlines()
 airport = df2.airports()
-planes =  df3.planes()
-routes = df4.routes()
+routes = df3.routes()
 
 ##### 6) Get the airline details which is having direct flights. details like airline id,name,source airport
     # name,destination airport name
@@ -37,16 +35,24 @@ d = routesf.join(airport, airport.Airport_id == routesf.dest_airport_id) \
 print(c.count())
 print(d.count())
 
-f1 = df.join(c, df.src_airport_id == c.src_airport_id,'inner').distinct()
-f2 = f1.join(d, d.dest_airport_id == f1.dest_airport_id,'inner')\
-        .select('airline_id','name','source_airport','destination_airport').distinct()
+f1 = df.join(c, df.src_airport_id == c.src_airport_id,'inner').distinct()\
+     .join(d, df.dest_airport_id == c.dest_airport_id,'inner')\
+     .select('airline_id','name','source_airport','destination_airport').distinct()
 
-f2.show()
+f1.show()
+print(f1.count())
 
-# f1.groupBy().count().show()
+# -----------sql-------------
 
-# f2 = f1.join(d,df.dest_airport == d.dest_airport,'inner')\
-#         .select(df.airline_id,df.name,c.source_airport,d.destination_airport)\
-#         .orderBy(asc(df['airline_id']))
+routes.createOrReplaceTempView("routes")
+airline.createOrReplaceTempView("airline")
+airport.createOrReplaceTempView("airport")
 
-# print(final.count())
+query = spark.sql(""" select a.airline_id,a.name airline_name,ap.name source_airport,
+                   ap1.name destination_airport from routes r
+                   join airline a on r.airline_id = ap.airline_id
+                   left join airport ap on r.src_airport_id = ap.airport_id
+                   left join airport ap1 on r.des_airport_id = ap1.airport_id
+                   where stops = 0 order by (a.airline_id) asc""")
+
+query.show()

@@ -26,12 +26,7 @@ dtf = airline.fillna('(unknown)', ['iata', 'callsign', 'icao', 'country'])
 dtf = dtf.withColumn('alias', regexp_replace(dtf['alias'], r'\\N', '(unknown)'))
 print("#--------------for airline----------#")
 dtf.show()
-# df1.write.csv(r"output/csvairdf")
 
-# _-------------sql--------------------#
-
-airline.createOrReplaceTempView("airline")
-#spark.sql("")
 
 # --------airport--------------------#
 airport.printSchema()

@@ -22,15 +22,19 @@ a = routes.groupBy(col('src_airport'), col('src_airport_id')).count() \
 b = routes.groupBy(col('dest_airport'), col('dest_airport_id')).count() \
     .select('dest_airport', 'dest_airport_id', col('count').alias('landings'))
 
+a.show()
+b.show()
 
 joindf = a.join(b, a['src_airport'] == b['dest_airport'], 'full') \
     .select('src_airport', 'dest_airport', (col('takeoffs') + col('landings')).alias('total_traffic')) \
     .orderBy(desc('total_traffic'))
 
+# joindf.show()
 
 resdf = airport.join(joindf, airport.Iata == joindf.src_airport) \
-    .select(airport.Airport_id, airport.Name, joindf.total_traffic) \
-    .orderBy(desc('total_traffic'))
+    .select(airport.Airport_id, airport.Name,joindf.src_airport,joindf.total_traffic) \
+    .orderBy(desc('total_traffic'))\
+    .filter('total_traffic is not null')
 resdf.show(1, truncate=False)
 
 # details = portdf.join(a, portdf.Iata == a.src_airport, 'inner').select(
@@ -40,13 +44,14 @@ resdf.show(1, truncate=False)
 
 ### ---sql-----------
 
-# airport.createOrReplaceTempView("airport")
-# routes.createOrReplaceTempView("routes")
-#
-# query1 = f"""select name,airport_id,src_airport,dest_airport,frequency from (select ar.name,ar.airport_id,
-#                 rt.src_airport,rt.dest_airport,count(*) as frequency,row_number()
-#                 over (order by count(*) desc) as r1
-#                 from airport ar join routes rt on (ar.Iata = rt.src_airport)
-#                 group by ar.name,ar.airport_id,rt.src_airport,rt.dest_airport
-#                 order by ar.name) where r1 = 1"""
-# spark.sql(query1).show()
+airport.createOrReplaceTempView("airport")
+routes.createOrReplaceTempView("routes")
+
+query = spark.sql("""select * from airport c where c.iata = 
+                    (select a.src_airport,sum(takeoff),row_number()
+                     over (order by sum(takeoff) desc) as rowNum from (select 
+                     src_airport,count(*) as takeoff from routes group by src_airport union
+                     select dest_airport,count(*) from routes group by dest_airport) a group by a.src_airport
+                     b where rowNum = 1)""")
+
+query.show()

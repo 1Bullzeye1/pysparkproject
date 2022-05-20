@@ -18,22 +18,22 @@ airport = df2.airports()
 output = airline.join(airport, airline.country == airport.Country,"inner") \
             .select(airline.country.alias("Country"), airport.Name.alias("Airport_name"), airline.name.alias("Airline_name"))
 
-output.show()
+# output.show()
 # output.printSchema()
 
 # ---2nd way of representation
 
 airpdf = output.groupBy("Country").agg(concat_ws(", ", collect_list("Airport_name")) \
         .alias("Airport_Name"))
-airpdf.show()
+# airpdf.show()
 
 airldf = output.groupBy("Country").agg(concat_ws(", ", collect_list("Airline_name")) \
         .alias("Airline_Name"))
-airldf.show()
+# airldf.show()
 
 joindf = airpdf.join(airldf, airpdf.Country == airldf.Country, "inner") \
         .select(airpdf["Country"], "Airport_Name", "Airline_Name")
-joindf.show()
+print(joindf.count())
 
 # joidf.write.csv(r"output/countairport",header=True)
 # joidf.write.json(r"output/jsondf")
@@ -47,9 +47,11 @@ airline.createOrReplaceTempView("airline")
 # spark.sql("select * from airport").show()
 # spark.sql("select * from airline").show()
 print("----------sql---------------- ")
-sqldf = spark.sql("select ar.Country as Country,al.name as Airline_name,ar.Name as Airport_name from airline al "
-                      "join airport ar on (al.country = ar.Country)")
+query = """select distinct ar.Country as Country from airline al
+            join airport ar on (al.country = ar.Country)
+            """
+sqldf = spark.sql(query)
 
-sqldf.show()
+print(sqldf.count())
 
-sqldf.printSchema()
+# sqldf.printSchema()
